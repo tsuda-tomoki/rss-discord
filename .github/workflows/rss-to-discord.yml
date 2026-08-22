@@ -1,0 +1,48 @@
+name: RSS to Discord
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      initialize:
+        description: "既存記事を通知せず、通知済みとして初期化する"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rss-to-discord
+  cancel-in-progress: false
+
+jobs:
+  post-new-items:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: RSS を確認して Discord に投稿
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ "${{ inputs.initialize }}" = "true" ]; then
+            python scripts/post_rss_to_discord.py --initialize
+          else
+            python scripts/post_rss_to_discord.py
+          fi
+
+      - name: 通知済み記事の状態を保存
+        run: |
+          if git diff --quiet -- data/seen_items.json; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/seen_items.json
+          git commit -m "chore: update RSS notification state"
+          git push
