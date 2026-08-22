@@ -81,7 +81,13 @@ def post_to_discord(webhook_url: str, feed_name: str, item: dict[str, str]) -> N
         content += f"\n{item['url']}"
     body = json.dumps({"content": content, "allowed_mentions": {"parse": []}}).encode("utf-8")
     request = urllib.request.Request(
-        webhook_url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+        webhook_url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "rss-discord/1.0 (+https://github.com/tsuda-tomoki/rss-discord)",
+        },
+        method="POST",
     )
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
