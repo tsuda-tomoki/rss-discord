@@ -93,6 +93,7 @@ def main() -> int:
     parser.add_argument("--feeds", type=Path, default=Path("feeds.csv"))
     parser.add_argument("--state", type=Path, default=Path("data/seen_items.json"))
     parser.add_argument("--initialize", action="store_true", help="既存記事を通知せず、通知済みとして記録します")
+    parser.add_argument("--send-latest", action="store_true", help="各フィードの最新記事をテスト送信します")
     args = parser.parse_args()
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
@@ -112,6 +113,12 @@ def main() -> int:
                 continue
             try:
                 items = parse_feed(fetch(url))
+                if args.send_latest:
+                    if not items:
+                        raise RuntimeError("記事が見つかりません")
+                    post_to_discord(webhook_url, f"{name}（テスト）", items[0])
+                    print(f"{name}: 最新記事をテスト送信しました")
+                    continue
                 known = state.get(url, [])
                 known_set = set(known)
                 unseen = [item for item in items if item["id"] not in known_set]

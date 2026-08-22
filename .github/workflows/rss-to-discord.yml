@@ -10,6 +10,11 @@ on:
         required: false
         default: false
         type: boolean
+      send_latest:
+        description: "各フィードの最新記事をテスト送信する（状態は変更しない）"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -32,7 +37,9 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          if [ "${{ inputs.initialize }}" = "true" ]; then
+          if [ "${{ inputs.send_latest }}" = "true" ]; then
+            python scripts/post_rss_to_discord.py --send-latest
+          elif [ "${{ inputs.initialize }}" = "true" ]; then
             python scripts/post_rss_to_discord.py --initialize
           else
             python scripts/post_rss_to_discord.py
