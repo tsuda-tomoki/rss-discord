@@ -83,9 +83,13 @@ def post_to_discord(webhook_url: str, feed_name: str, item: dict[str, str]) -> N
     request = urllib.request.Request(
         webhook_url, data=body, headers={"Content-Type": "application/json"}, method="POST"
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        if response.status not in (200, 204):
-            raise RuntimeError(f"Discord returned HTTP {response.status}")
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            if response.status not in (200, 204):
+                raise RuntimeError(f"Discord webhook returned HTTP {response.status}")
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"Discord webhook rejected the request (HTTP {error.code}): {detail}") from error
 
 
 def load_state(path: Path) -> dict[str, list[str]]:
@@ -122,6 +126,11 @@ def main() -> int:
                 continue
             try:
                 items = parse_feed(fetch(url))
+            except (ET.ParseError, urllib.error.URLError, urllib.error.HTTPError) as error:
+                errors.append(f"{name}: RSS の取得または解析に失敗しました ({error})")
+                continue
+
+            try:
                 if args.send_latest:
                     if not items:
                         raise RuntimeError("記事が見つかりません")
@@ -138,8 +147,8 @@ def main() -> int:
                 state[url] = ([item["id"] for item in items] + known)[:MAX_SEEN_PER_FEED]
                 changed = True
                 print(f"{name}: {len(unseen)} 件の未通知記事")
-            except (ET.ParseError, urllib.error.URLError, urllib.error.HTTPError, RuntimeError) as error:
-                errors.append(f"{name} ({url}): {error}")
+            except (urllib.error.URLError, RuntimeError) as error:
+                errors.append(f"{name}: Discord への投稿に失敗しました ({error})")
 
     if changed:
         args.state.parent.mkdir(parents=True, exist_ok=True)
