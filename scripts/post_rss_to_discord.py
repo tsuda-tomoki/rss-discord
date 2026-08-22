@@ -61,7 +61,16 @@ def parse_feed(payload: bytes) -> list[dict[str, str]]:
 
 
 def fetch(url: str) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "rss-discord-github-actions/1.0"})
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (compatible; rss-discord/1.0; "
+                "+https://github.com/tsuda-tomoki/rss-discord)"
+            ),
+            "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+        },
+    )
     with urllib.request.urlopen(request, timeout=30) as response:
         return response.read()
 
